@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package a1.xxx;
+
+import "google/protobuf/wrappers.proto";
+
+message A1 {
+  string id = 1;
+}

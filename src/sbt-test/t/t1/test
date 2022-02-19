@@ -1,0 +1,8 @@
+> Test/compile
+-$ must-mirror src/main/protobuf/a1.proto expect/a1.proto
+> Compile/protoUnusedImportRemove
+$ must-mirror src/main/protobuf/a1.proto expect/a1.proto
+-$ must-mirror src/test/protobuf/a2.proto expect/a2.proto
+> Test/protoUnusedImportRemove
+$ must-mirror src/test/protobuf/a2.proto expect/a2.proto
+> Test/compile
