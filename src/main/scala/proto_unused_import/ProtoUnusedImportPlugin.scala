@@ -66,7 +66,7 @@ object ProtoUnusedImportPlugin extends AutoPlugin {
     },
     c / PB.runProtoc := {
       val exec = PB.protocExecutable.value.getAbsolutePath
-      val lock = new Object()
+      val lock = new Object
       val s = streams.value.log
       val result = collection.mutable.ListBuffer.empty[String]
       val logger = ProcessLogger(
