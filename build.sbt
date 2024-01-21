@@ -1,6 +1,6 @@
 import sbtrelease.ReleasePlugin.autoImport.ReleaseTransformations._
 
-addSbtPlugin("com.thesamet" % "sbt-protoc" % "1.0.6")
+addSbtPlugin("com.thesamet" % "sbt-protoc" % "1.0.7")
 enablePlugins(SbtPlugin, ScriptedPlugin)
 name := "proto-unused-imports"
 publishTo := sonatypePublishToBundle.value
