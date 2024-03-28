@@ -6,4 +6,5 @@ import "google/protobuf/wrappers.proto";
 
 message A1 {
   string id = 1;
+  optional string name = 2;
 }
