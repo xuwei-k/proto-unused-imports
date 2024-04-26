@@ -13,6 +13,7 @@ object ProtoUnusedImportPlugin extends AutoPlugin {
 
   object autoImport {
     val protoUnusedImportRemove = taskKey[Unit]("")
+    val protoUnusedImportCheck = taskKey[Unit]("")
   }
 
   import autoImport.*
@@ -27,6 +28,13 @@ object ProtoUnusedImportPlugin extends AutoPlugin {
   override def requires: Plugins = ProtocPlugin
 
   def protoUnusedImportSetting(c: Configuration): Seq[Setting[?]] = Def.settings(
+    c / protoUnusedImportCheck := {
+      val _ = (c / PB.generate).value
+      protobufUnusedWarningsLock.synchronized {
+        val warns = protobufUnusedWarnings.get((state.value.currentProject.id, c.id)).toList.flatten
+        assert(warns.isEmpty, warns.mkString(" "))
+      }
+    },
     c / protoUnusedImportRemove := {
       val _ = (c / PB.generate).value
       val log = streams.value.log
