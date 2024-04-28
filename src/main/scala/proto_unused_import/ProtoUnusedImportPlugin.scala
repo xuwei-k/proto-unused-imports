@@ -14,11 +14,16 @@ object ProtoUnusedImportPlugin extends AutoPlugin {
   object autoImport {
     val protoUnusedImportRemove = taskKey[Unit]("")
     val protoUnusedImportCheck = taskKey[Unit]("")
+    val protoUnusedImportCheckAll = taskKey[Unit]("")
   }
 
   import autoImport.*
 
   override def projectSettings: Seq[Setting[?]] = Def.settings(
+    protoUnusedImportCheckAll := {
+      (Compile / protoUnusedImportCheck).value
+      (Test / protoUnusedImportCheck).value
+    },
     protoUnusedImportSetting(Compile),
     protoUnusedImportSetting(Test),
   )
