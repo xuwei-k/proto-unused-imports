@@ -2,12 +2,15 @@
 -$ must-mirror src/main/protobuf/a1.proto expect/a1.proto
 -> Compile/protoUnusedImportCheck
 -> Test/protoUnusedImportCheck
+-> protoUnusedImportCheckAll
 > Compile/protoUnusedImportRemove
 $ must-mirror src/main/protobuf/a1.proto expect/a1.proto
 > Compile/protoUnusedImportCheck
 -> Test/protoUnusedImportCheck
+-> protoUnusedImportCheckAll
 -$ must-mirror src/test/protobuf/a2.proto expect/a2.proto
 > Test/protoUnusedImportRemove
 > Test/protoUnusedImportCheck
+> protoUnusedImportCheckAll
 $ must-mirror src/test/protobuf/a2.proto expect/a2.proto
 > Test/compile
