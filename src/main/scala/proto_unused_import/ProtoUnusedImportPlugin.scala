@@ -15,11 +15,13 @@ object ProtoUnusedImportPlugin extends AutoPlugin {
     val protoUnusedImportRemove = taskKey[Unit]("")
     val protoUnusedImportCheck = taskKey[Unit]("")
     val protoUnusedImportCheckAll = taskKey[Unit]("")
+    val protoUnusedImportConvertPath = settingKey[Boolean]("")
   }
 
   import autoImport.*
 
   override def projectSettings: Seq[Setting[?]] = Def.settings(
+    protoUnusedImportConvertPath := true,
     protoUnusedImportCheckAll := {
       (Compile / protoUnusedImportCheck).value
       (Test / protoUnusedImportCheck).value
@@ -28,9 +30,49 @@ object ProtoUnusedImportPlugin extends AutoPlugin {
     protoUnusedImportSetting(Test),
   )
 
-  private[this] val protobufUnusedWarnings: TrieMap[(String, String), List[String]] = TrieMap.empty
+  private[this] val protobufUnusedWarnings: TrieMap[(String, String), List[UnusedWarn]] = TrieMap.empty
 
   override def requires: Plugins = ProtocPlugin
+
+  private def separatorChar: Char = ':'
+  private def unusedWarnLineSuffix: String = ".proto is unused."
+
+  private case class UnusedWarn(file: String, line: Int, suffix: String) {
+    override def toString: String = Seq(file, line, suffix).mkString(String.valueOf(separatorChar))
+  }
+
+  private object UnusedWarn {
+    private object AsInt {
+      def unapply(str: String): Option[Int] = {
+        try {
+          Option(Integer.parseInt(str))
+        } catch {
+          case _: NumberFormatException => None
+        }
+      }
+    }
+    def unapply(str: String): Option[UnusedWarn] = {
+      // file-name:line-number:1: warning: Import google/protobuf/wrappers.proto is unused.
+      PartialFunction.condOpt(str.split(separatorChar).toList) { case file :: AsInt(line) :: suffix =>
+        UnusedWarn(file = file, line = line, suffix = suffix.mkString(String.valueOf(separatorChar)))
+      }
+    }
+  }
+
+  private case class Unused(file: File, line: Int, suffix: String)
+
+  private def convertUnusedLines(dirs: Seq[File], warns: Seq[UnusedWarn]): Seq[Unused] = {
+    warns.flatMap { warn =>
+      dirs.map { dir =>
+        val f = dir / warn.file
+        if (f.isFile) {
+          Option(Unused(dir / warn.file, warn.line, suffix = warn.suffix))
+        } else {
+          None
+        }
+      }.collectFirst { case Some(x) => x }
+    }
+  }
 
   def protoUnusedImportSetting(c: Configuration): Seq[Setting[?]] = Def.settings(
     c / protoUnusedImportCheck := {
@@ -42,39 +84,27 @@ object ProtoUnusedImportPlugin extends AutoPlugin {
     },
     c / protoUnusedImportRemove := {
       val _ = (c / PB.generate).value
-      val log = streams.value.log
       val s = state.value
-      case class Unused(file: File, line: Int)
       protobufUnusedWarningsLock.synchronized {
-        (c / PB.protoSources).value.headOption.foreach { dir =>
-          val warns = protobufUnusedWarnings.get((state.value.currentProject.id, c.id)).toList.flatten
-          val unusedLines = warns.flatMap { warn =>
-            // file-name:line-number:1: warning: Import google/protobuf/wrappers.proto is unused.
-            warn.split(':').toList match {
-              case file :: unused :: _ =>
-                val f = dir / file
-                Unused(f, unused.toInt) :: Nil
-              case _ =>
-                log.error(s"unexpected unused warning ${warn}")
-                Nil
-            }
-          }
+        val unusedLines = convertUnusedLines(
+          dirs = (c / PB.protoSources).value,
+          warns = protobufUnusedWarnings.get((state.value.currentProject.id, c.id)).toList.flatten
+        )
 
-          unusedLines.groupBy(_.file).foreach { case (file, unused) =>
-            val lines = unused.map(_.line).toSet
-            s.log.info(
-              s"remove unused import. file = ${file.getAbsolutePath}, line = '${lines.toList.sorted.mkString(", ")}'"
-            )
-            val removed = IO
-              .read(file)
-              .linesIterator
-              .zip(Iterator.from(1))
-              .collect { case (line, lineNum) if !lines(lineNum) => line }
-              .toList
-            IO.writeLines(file, removed)
-          }
-          protobufUnusedWarnings.update((s.currentProject.id, c.id), Nil)
+        unusedLines.groupBy(_.file).foreach { case (file, unused) =>
+          val lines = unused.map(_.line).toSet
+          s.log.info(
+            s"remove unused import. file = ${file.getAbsolutePath}, line = '${lines.toList.sorted.mkString(", ")}'"
+          )
+          val removed = IO
+            .read(file)
+            .linesIterator
+            .zip(Iterator.from(1))
+            .collect { case (line, lineNum) if !lines(lineNum) => line }
+            .toList
+          IO.writeLines(file, removed)
         }
+        protobufUnusedWarnings.update((s.currentProject.id, c.id), Nil)
       }
     },
     c / PB.runProtoc := {
@@ -93,7 +123,21 @@ object ProtoUnusedImportPlugin extends AutoPlugin {
           lock.synchronized {
             result += str
           }
-          s.warn(str)
+          if (protoUnusedImportConvertPath.value) {
+            convertUnusedLines(
+              dirs = (c / PB.protoSources).value,
+              warns = Option(str).filter(_.endsWith(unusedWarnLineSuffix)).flatMap(s => UnusedWarn.unapply(s)).toList
+            ) match {
+              case Nil =>
+                s.warn(str)
+              case values =>
+                values.foreach { x =>
+                  s.warn(s"${x.file.getCanonicalPath}:${x.line}:${x.suffix}")
+                }
+            }
+          } else {
+            s.warn(str)
+          }
         }
       )
       protocbridge.ProtocRunner.fromFunction { case (args, extraEnv) =>
@@ -107,7 +151,10 @@ object ProtoUnusedImportPlugin extends AutoPlugin {
           protobufUnusedWarningsLock.synchronized {
             protobufUnusedWarnings.update(
               (state.value.currentProject.id, c.id),
-              lock.synchronized(result.toList).filter(_.endsWith(".proto is unused."))
+              lock
+                .synchronized(result.toList)
+                .filter(_.endsWith(unusedWarnLineSuffix))
+                .flatMap(s => UnusedWarn.unapply(s))
             )
           }
         }
