@@ -3,7 +3,7 @@ import sbtrelease.ReleasePlugin.autoImport.ReleaseTransformations._
 addSbtPlugin("com.thesamet" % "sbt-protoc" % "1.0.8")
 enablePlugins(SbtPlugin, ScriptedPlugin)
 name := "proto-unused-imports"
-publishTo := sonatypePublishToBundle.value
+publishTo := (if (isSnapshot.value) None else localStaging.value)
 Compile / unmanagedResources += (LocalRootProject / baseDirectory).value / "LICENSE.txt"
 Compile / packageSrc / mappings ++= (Compile / managedSources).value.map { f =>
   (f, f.relativeTo((Compile / sourceManaged).value).get.getPath)
@@ -59,7 +59,7 @@ releaseProcess := Seq[ReleaseStep](
   commitReleaseVersion,
   tagRelease,
   releaseStepCommandAndRemaining("publishSigned"),
-  releaseStepCommandAndRemaining("sonatypeBundleRelease"),
+  releaseStepCommandAndRemaining("sonaRelease"),
   setNextVersion,
   commitNextVersion,
   pushChanges
