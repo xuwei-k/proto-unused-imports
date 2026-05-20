@@ -1,6 +1,33 @@
 import sbtrelease.ReleasePlugin.autoImport.ReleaseTransformations._
 
-addSbtPlugin("com.thesamet" % "sbt-protoc" % "1.0.8")
+def sbt2 = "2.0.0-RC13"
+
+addSbtPlugin("com.github.sbt" % "sbt2-compat" % "0.1.0")
+
+crossScalaVersions += scala_version_from_sbt_version.ScalaVersionFromSbtVersion(sbt2)
+
+pluginCrossBuild / sbtVersion := {
+  scalaBinaryVersion.value match {
+    case "2.12" =>
+      sbtVersion.value
+    case _ =>
+      sbt2
+  }
+}
+
+libraryDependencies += {
+  val v = (pluginCrossBuild / sbtBinaryVersion).value match {
+    case "1.0" =>
+      "1.0.8"
+    case "2" =>
+      "1.1.0-RC1"
+  }
+  Defaults.sbtPluginExtra(
+    "com.thesamet" % "sbt-protoc" % v,
+    (pluginCrossBuild / sbtBinaryVersion).value,
+    (update / scalaBinaryVersion).value,
+  )
+}
 enablePlugins(SbtPlugin, ScriptedPlugin)
 name := "proto-unused-imports"
 publishTo := (if (isSnapshot.value) None else localStaging.value)
@@ -23,6 +50,7 @@ scalacOptions ++= {
     Nil
   } else {
     Seq(
+      "-release:8",
       "-Xsource:3",
     )
   }
@@ -55,7 +83,7 @@ releaseProcess := Seq[ReleaseStep](
   setReleaseVersion,
   commitReleaseVersion,
   tagRelease,
-  releaseStepCommandAndRemaining("publishSigned"),
+  releaseStepCommandAndRemaining("+ publishSigned"),
   releaseStepCommandAndRemaining("sonaRelease"),
   setNextVersion,
   commitNextVersion,

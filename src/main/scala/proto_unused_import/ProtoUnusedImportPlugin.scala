@@ -2,6 +2,7 @@ package proto_unused_import
 
 import sbt.*
 import sbt.Keys.*
+import sbtcompat.PluginCompat._
 import sbtprotoc.ProtocPlugin
 import sbtprotoc.ProtocPlugin.autoImport.PB
 import scala.collection.concurrent.TrieMap
@@ -12,8 +13,11 @@ object ProtoUnusedImportPlugin extends AutoPlugin {
   private[this] val protobufUnusedWarningsLock = new Object
 
   object autoImport {
+    @transient
     val protoUnusedImportRemove = taskKey[Unit]("")
+    @transient
     val protoUnusedImportCheck = taskKey[Unit]("")
+    @transient
     val protoUnusedImportCheckAll = taskKey[Unit]("")
     val protoUnusedImportConvertPath = settingKey[Boolean]("")
   }
@@ -107,7 +111,7 @@ object ProtoUnusedImportPlugin extends AutoPlugin {
         protobufUnusedWarnings.update((s.currentProject.id, c.id), Nil)
       }
     },
-    c / PB.runProtoc := {
+    c / PB.runProtoc := Def.uncached {
       val exec = PB.protocExecutable.value.getAbsolutePath
       val lock = new Object()
       val s = streams.value.log
