@@ -42,7 +42,11 @@ Compile / doc / scalacOptions ++= {
       s"https://github.com/xuwei-k/proto-unused-imports/blob/${hash}€{FILE_PATH}.scala"
     )
   } else {
-    Nil
+    Seq(
+      "-source-links:github://xuwei-k/proto-unused-imports",
+      "-revision",
+      hash
+    )
   }
 }
 scalacOptions ++= {
