@@ -1,17 +1,17 @@
 import sbtrelease.ReleasePlugin.autoImport.ReleaseTransformations._
 
-def sbt2 = "2.0.0"
+def sbt1 = "1.12.12"
 
 addSbtPlugin("com.github.sbt" % "sbt2-compat" % "0.1.0")
 
-crossScalaVersions += scala_version_from_sbt_version.ScalaVersionFromSbtVersion(sbt2)
+crossScalaVersions += scala_version_from_sbt_version.ScalaVersionFromSbtVersion(sbt1)
 
 pluginCrossBuild / sbtVersion := {
   scalaBinaryVersion.value match {
     case "2.12" =>
-      sbtVersion.value
+      sbt1
     case _ =>
-      sbt2
+      sbtVersion.value
   }
 }
 
@@ -33,7 +33,7 @@ name := "proto-unused-imports"
 publishTo := (if (isSnapshot.value) None else localStaging.value)
 Compile / unmanagedResources += (LocalRootProject / baseDirectory).value / "LICENSE.txt"
 Compile / doc / scalacOptions ++= {
-  val hash = sys.process.Process("git rev-parse HEAD").lineStream_!.head
+  val hash = sys.process.Process("git rev-parse HEAD").lazyLines_!.head
   if (scalaBinaryVersion.value != "3") {
     Seq(
       "-sourcepath",
