@@ -78,7 +78,7 @@ pomExtra := (
 organization := "com.github.xuwei-k"
 homepage := Some(url("https://github.com/xuwei-k/proto-unused-imports"))
 licenses := List(
-  "MIT License" -> url("https://opensource.org/licenses/mit-license")
+  "MIT License" -> uri("https://opensource.org/license/MIT")
 )
 releaseProcess := Seq[ReleaseStep](
   checkSnapshotDependencies,
