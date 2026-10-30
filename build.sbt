@@ -1,6 +1,6 @@
 import sbtrelease.ReleasePlugin.autoImport.ReleaseTransformations._
 
-def sbt1 = "1.13.0"
+def sbt1 = "1.13.1"
 
 addSbtPlugin("com.github.sbt" % "sbt2-compat" % "0.2.0")
 
